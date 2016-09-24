@@ -16,12 +16,14 @@ VTK_MODULE_INIT(vtkInteractionStyle);
 #include <vtkSmartPointer.h>
 #include <vtkVolume.h>
 #include <vtkVolumeRayCastMapper.h>
+#include <vtkSmartVolumeMapper.h>
 #include <vtkVolumeProperty.h>
 #include <vtkObjectFactory.h>
 #include <vtkImageImport.h>
 #include <vtkVolumeRayCastCompositeFunction.h>
 #include <vtkColorTransferFunction.h>
 #include <vtkPiecewiseFunction.h>
+#include <vtkImageGaussianSmooth.h>
 
 
 class MainWindow : public QMainWindow {
@@ -54,22 +56,31 @@ public:
 		imageImport->SetNumberOfScalarComponents(1);
 
 		vtkSmartPointer<vtkPiecewiseFunction> alphaChannelFunc = vtkSmartPointer<vtkPiecewiseFunction>::New();
-		alphaChannelFunc->AddPoint(0, 0.2);
-		alphaChannelFunc->AddPoint(100, 0.2);
+		alphaChannelFunc->AddPoint(0, 0);
+		alphaChannelFunc->AddPoint(25, 0.03);
+		alphaChannelFunc->AddPoint(50, 0.05);
+		alphaChannelFunc->AddPoint(100, 0.1);
+		alphaChannelFunc->AddPoint(130, 0.15);
+		alphaChannelFunc->AddPoint(150, 0.155);
 		alphaChannelFunc->AddPoint(255, 0.2);
 
 		vtkSmartPointer<vtkColorTransferFunction> colorFunc = vtkSmartPointer<vtkColorTransferFunction>::New();
-		colorFunc->AddRGBPoint(0, 0.0, 1.0, 0.0);
-		colorFunc->AddRGBPoint(125, 1.0, 1.0, 0.0);
-		colorFunc->AddRGBPoint(255, 1.0, 0.0, 0.0);
+		colorFunc->AddRGBPoint(0, 0.0, 0.9, 0.0);
+		colorFunc->AddRGBPoint(75, 1.0, 1.0, 0.0);
+		colorFunc->AddRGBPoint(150, 1.0, 0.0, 0.0);
+		colorFunc->AddRGBPoint(200, 1.0, 0.0, 1.0);
+		colorFunc->AddRGBPoint(255, 0.0, 0.0, 1.0);
 		//colorFunc->AddRGBPoint(100, 0.0, 1.0, 0.0);
 
 		vtkSmartPointer<vtkVolumeProperty> volumeProperty = vtkSmartPointer<vtkVolumeProperty>::New();
 		volumeProperty->SetColor(colorFunc);
-		//volumeProperty->SetScalarOpacity(alphaChannelFunc);
+		//volumeProperty->SetGradientOpacity(alphaChannelFunc);
+		volumeProperty->SetScalarOpacity(alphaChannelFunc);
+		volumeProperty->ShadeOn();
+		//volumeProperty->SetInterpolationTypeToLinear();
 
-		vtkSmartPointer<vtkVolumeRayCastMapper> volumeMapper = vtkSmartPointer<vtkVolumeRayCastMapper>::New();
-		volumeMapper->SetVolumeRayCastFunction(compositeFunction);
+		vtkSmartPointer<vtkSmartVolumeMapper> volumeMapper = vtkSmartPointer<vtkSmartVolumeMapper>::New();
+		//volumeMapper->SetVolumeRayCastFunction(compositeFunction);
 		volumeMapper->SetInputConnection(imageImport->GetOutputPort());
 
 		vtkSmartPointer<vtkVolume> volume = vtkSmartPointer<vtkVolume>::New();
