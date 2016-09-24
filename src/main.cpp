@@ -1,3 +1,5 @@
+#include <stdlib.h>
+
 #include <vtkAutoInit.h>
 VTK_MODULE_INIT(vtkRenderingOpenGL);
 VTK_MODULE_INIT(vtkRenderingVolumeOpenGL);
@@ -16,12 +18,11 @@ VTK_MODULE_INIT(vtkInteractionStyle);
 #include <vtkVolumeRayCastMapper.h>
 #include <vtkVolumeProperty.h>
 #include <vtkObjectFactory.h>
-#include <vtkDataReader.h>
+#include <vtkImageImport.h>
 #include <vtkVolumeRayCastCompositeFunction.h>
-#include <vtkStructuredPoints.h>
+#include <vtkColorTransferFunction.h>
+#include <vtkPiecewiseFunction.h>
 
-class MyDataSource : public vtkDataReader {
-};
 
 class MainWindow : public QMainWindow {
 public:
@@ -34,29 +35,55 @@ public:
 
 		QVTKWidget* qvtk = new QVTKWidget(this);
 
-		//vtkSmartPointer<vtkDataReader> grid = vtkSmartPointer<vtkDataReader>::New();
-
-		//vtkSmartPointer<vtkVolumeRayCastCompositeFunction> compositeFunction = vtkSmartPointer<vtkVolumeRayCastCompositeFunction>::New();
+		vtkSmartPointer<vtkVolumeRayCastCompositeFunction> compositeFunction = vtkSmartPointer<vtkVolumeRayCastCompositeFunction>::New();
 		//compositeFunction->SetCompositeMethod(0);
 
-		//vtkSmartPointer<vtkVolumeProperty> volumeProperty = vtkSmartPointer<vtkVolumeProperty>::New();
-		//vtkSmartPointer<vtkVolumeRayCastMapper> volumeMapper = vtkSmartPointer<vtkVolumeRayCastMapper>::New();
-		//volumeMapper->SetInputConnection(grid->GetOutputPort());
-		//volumeMapper->SetVolumeRayCastFunction(compositeFunction);
+		unsigned int dimensionSize = 10;
+		unsigned int dataSize = dimensionSize*dimensionSize*dimensionSize;
+		unsigned char data[dataSize];
+		for(unsigned int i = 0; i < dataSize; i++) {
+			data[i] = rand() % 255;
+		}
 
-		//vtkSmartPointer<vtkVolume> volume = vtkSmartPointer<vtkVolume>::New();
-		//volume->SetProperty(volumeProperty);
-		//volume->SetMapper(volumeMapper);
+		vtkSmartPointer<vtkImageImport> imageImport = vtkSmartPointer<vtkImageImport>::New();
+		imageImport->SetWholeExtent(0, dimensionSize - 1, 0, dimensionSize - 1, 0, dimensionSize - 1);
+		imageImport->SetDataExtentToWholeExtent();
+		imageImport->SetImportVoidPointer(data);
+		imageImport->CopyImportVoidPointer(data, dataSize*sizeof(unsigned char));
+		imageImport->SetDataScalarTypeToUnsignedChar();
+		imageImport->SetNumberOfScalarComponents(1);
 
-		//volumeMapper->SetBlendModeToMaximumIntensity();
+		vtkSmartPointer<vtkPiecewiseFunction> alphaChannelFunc = vtkSmartPointer<vtkPiecewiseFunction>::New();
+		alphaChannelFunc->AddPoint(0, 0.2);
+		alphaChannelFunc->AddPoint(100, 0.2);
+		alphaChannelFunc->AddPoint(255, 0.2);
+
+		vtkSmartPointer<vtkColorTransferFunction> colorFunc = vtkSmartPointer<vtkColorTransferFunction>::New();
+		colorFunc->AddRGBPoint(0, 0.0, 1.0, 0.0);
+		colorFunc->AddRGBPoint(125, 1.0, 1.0, 0.0);
+		colorFunc->AddRGBPoint(255, 1.0, 0.0, 0.0);
+		//colorFunc->AddRGBPoint(100, 0.0, 1.0, 0.0);
+
+		vtkSmartPointer<vtkVolumeProperty> volumeProperty = vtkSmartPointer<vtkVolumeProperty>::New();
+		volumeProperty->SetColor(colorFunc);
+		//volumeProperty->SetScalarOpacity(alphaChannelFunc);
+
+		vtkSmartPointer<vtkVolumeRayCastMapper> volumeMapper = vtkSmartPointer<vtkVolumeRayCastMapper>::New();
+		volumeMapper->SetVolumeRayCastFunction(compositeFunction);
+		volumeMapper->SetInputConnection(imageImport->GetOutputPort());
+
+		vtkSmartPointer<vtkVolume> volume = vtkSmartPointer<vtkVolume>::New();
+		volume->SetProperty(volumeProperty);
+		volume->SetMapper(volumeMapper);
 
 		vtkSmartPointer<vtkRenderer> renderer = vtkSmartPointer<vtkRenderer>::New();
 
-		//renderer->AddVolume(volume);
-		renderer->ResetCamera();
 		qvtk->GetRenderWindow()->AddRenderer(renderer);
+		renderer->AddVolume(volume);
+		renderer->SetBackground(0,0,0);
+		renderer->ResetCamera();
 
-		//qvtk->GetRenderWindow()->Render();
+		qvtk->GetRenderWindow()->Render();
 
 		this->setCentralWidget(qvtk);
 
