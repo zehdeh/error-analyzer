@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <iostream>
 
 #include <vtkAutoInit.h>
 VTK_MODULE_INIT(vtkRenderingOpenGL);
@@ -9,6 +10,8 @@ VTK_MODULE_INIT(vtkInteractionStyle);
 #include <QtWidgets/QMainWindow>
 #include <QtWidgets/QDockWidget>
 #include <QtWidgets/QDesktopWidget>
+#include <QtWidgets/QTabWidget>
+#include <QtWidgets/QListWidget>
 #include <QVTKWidget.h>
 
 #include <vtkRenderer.h>
@@ -24,6 +27,10 @@ VTK_MODULE_INIT(vtkInteractionStyle);
 #include <vtkColorTransferFunction.h>
 #include <vtkPiecewiseFunction.h>
 #include <vtkImageGaussianSmooth.h>
+#include <vtkOBJReader.h>
+#include <vtkSTLReader.h>
+#include <vtkPolyDataMapper.h>
+#include <vtkPointData.h>
 
 
 class MainWindow : public QMainWindow {
@@ -35,8 +42,62 @@ public:
 		int y = (desktopSize.height() / 2) - (desktopSize.height()*0.7 / 2);
 		move(x,y);
 
-		QVTKWidget* qvtk = new QVTKWidget(this);
+		QTabWidget* tabWidget = new QTabWidget;
+		QVTKWidget* qvtkErrorGrid = new QVTKWidget(tabWidget);
+		setupErrorGrid(qvtkErrorGrid);
 
+		QVTKWidget* qvtkErrorTracer = new QVTKWidget(tabWidget);
+		setupErrorTracer(qvtkErrorTracer);
+
+		tabWidget->addTab(qvtkErrorTracer, tr("Error Tracer"));
+		tabWidget->addTab(qvtkErrorGrid, tr("Error grid"));
+
+		this->setCentralWidget(tabWidget);
+
+		QDockWidget* dockWidget = new QDockWidget(tr("Meshes"), this);
+		dockWidget->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+
+		QListWidget* meshList = new QListWidget(dockWidget);
+		for(unsigned int i = 0; i < 10; i++) {
+			QListWidgetItem* item = new QListWidgetItem("Mesh", meshList);
+			item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
+			item->setCheckState(Qt::Checked);
+			meshList->addItem(item);
+		}
+		dockWidget->setWidget(meshList);
+
+		this->addDockWidget(Qt::LeftDockWidgetArea, dockWidget);
+	}
+
+	void setupErrorTracer(QVTKWidget* qvtk) {
+		setlocale (LC_NUMERIC,"C");
+		vtkSmartPointer<vtkOBJReader> reader = vtkSmartPointer<vtkOBJReader>::New();
+		reader->SetFileName("../spheremeasurements/res/tangential2/LargeSphere_tangential_02.000001.obj");
+		reader->Update();
+		reader->GetOutput()->GetPointData()->SetNormals(NULL);
+
+		vtkSmartPointer<vtkPolyDataMapper> mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+		mapper->SetInputConnection(reader->GetOutputPort());
+
+		vtkSmartPointer<vtkActor> actor = vtkSmartPointer<vtkActor>::New();
+		actor->SetMapper(mapper);
+
+		reader->SetFileName("../spheremeasurements/res/tangential2/LargeSphere_tangential_02.000002.obj");
+		reader->Update();
+		reader->GetOutput()->GetPointData()->SetNormals(NULL);
+
+		//vtkSmartPointer<vtkPolyDataMapper> mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
+		mapper->SetInputConnection(reader->GetOutputPort());
+
+		vtkSmartPointer<vtkActor> actor2 = vtkSmartPointer<vtkActor>::New();
+		actor2->SetMapper(mapper);
+
+		vtkSmartPointer<vtkRenderer> renderer = vtkSmartPointer<vtkRenderer>::New();
+		renderer->AddActor(actor);
+		qvtk->GetRenderWindow()->AddRenderer(renderer);
+	}
+
+	void setupErrorGrid(QVTKWidget* qvtk) {
 		vtkSmartPointer<vtkVolumeRayCastCompositeFunction> compositeFunction = vtkSmartPointer<vtkVolumeRayCastCompositeFunction>::New();
 		//compositeFunction->SetCompositeMethod(0);
 
@@ -94,14 +155,7 @@ public:
 		renderer->SetBackground(0,0,0);
 		renderer->ResetCamera();
 
-		qvtk->GetRenderWindow()->Render();
-
-		this->setCentralWidget(qvtk);
-
-		QDockWidget* dockWidget = new QDockWidget(tr("Dock Widget"), this);
-		dockWidget->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
-
-		this->addDockWidget(Qt::LeftDockWidgetArea, dockWidget);
+		//qvtk->GetRenderWindow()->Render();
 	}
 };
 
